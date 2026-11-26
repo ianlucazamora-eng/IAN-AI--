@@ -1,0 +1,527 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IAN AI</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#050505;color:#fff;font-family:Arial,sans-serif}
+.app{display:flex;height:100vh;padding:14px;gap:14px}
+.sidebar{width:250px;min-width:220px;background:#101010;border:1px solid #555;border-radius:12px;padding:18px;display:flex;flex-direction:column}
+.logo{font-size:27px;font-weight:bold;letter-spacing:2px;margin-bottom:25px;color:#fff;text-shadow:0 0 12px #fff}
+.sidebtn{width:100%;padding:13px;margin-bottom:9px;background:#191919;border:1px solid #444;color:white;text-align:left;border-radius:7px;cursor:pointer}
+.sidebtn:hover,.sidebtn.selected{background:#292929;border-color:white;box-shadow:0 0 9px #ffffff33}
+.section-title{font-size:12px;color:#aaa;margin:15px 0 8px}
+#chatList{overflow-y:auto;flex:1}
+.chat-item{background:#191919;border:1px solid #333;padding:11px;margin-bottom:7px;border-radius:7px;cursor:pointer;overflow-wrap:anywhere}
+.chat-item:hover{border-color:white}
+.main{flex:1;min-width:0;background:#101010;border:1px solid #555;border-radius:12px;display:flex;flex-direction:column;overflow:hidden}
+.topbar{padding:18px;border-bottom:1px solid #444;display:flex;justify-content:space-between;align-items:center}
+.topbar h2{margin:0;font-size:20px}
+.status{font-size:12px;color:#ccc}
+.screen{display:none;flex:1;min-height:0;overflow-y:auto;padding:22px}
+.screen.active{display:block}
+#chatScreen{flex-direction:column}
+#chatScreen.active{display:flex}
+#messages{flex:1;overflow-y:auto;padding:15px}
+.message{max-width:85%;padding:14px;margin-bottom:14px;border-radius:9px;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5}
+.user{margin-left:auto;background:#292929;border:1px solid #888}
+.ai{background:#171717;border:1px solid #555}
+.welcome{text-align:center;margin:auto;padding:25px}
+.welcome h1{font-size:36px;text-shadow:0 0 15px #fff}
+.input-area{padding:15px;border-top:1px solid #444;display:flex;gap:10px}
+input,textarea{width:100%;background:#080808;border:1px solid #555;color:white;padding:13px;border-radius:7px;outline:none}
+input:focus,textarea:focus{border-color:white;box-shadow:0 0 7px #ffffff33}
+#chatInput{flex:1;min-width:0}
+textarea{min-height:180px;resize:vertical}
+.action{background:white;color:black;border:0;border-radius:7px;padding:12px 17px;font-weight:bold;cursor:pointer;margin:4px}
+.action:hover{background:#ccc}
+.field{margin:8px 0 14px}
+.article{padding:15px;margin:12px 0;background:#171717;border:1px solid #444;border-radius:8px;overflow-wrap:anywhere}
+.article h3{margin-top:0}
+.article p{white-space:pre-wrap;line-height:1.5}
+.small{font-size:12px;color:#aaa}
+.hidden{display:none}
+hr{border:0;border-top:1px solid #444;margin:22px 0}
+@media(max-width:700px){
+.app{height:auto;min-height:100vh;flex-direction:column}
+.sidebar{width:100%;max-height:350px}
+.main{min-height:650px}
+.message{max-width:95%}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<aside class="sidebar">
+<div class="logo">IAN AI</div>
+
+<button class="sidebtn" onclick="newChat()">＋ Nuevo chat</button>
+<button class="sidebtn selected" onclick="showScreen('chat')">💬 Chat</button>
+<button class="sidebtn" onclick="showScreen('database')">🧠 Base de datos</button>
+<button class="sidebtn" onclick="showScreen('library')">📚 Biblioteca</button>
+<button class="sidebtn" onclick="showScreen('projects')">📁 Proyectos</button>
+<button class="sidebtn" onclick="showScreen('editor')">💻 Editor HTML</button>
+<button class="sidebtn" onclick="showScreen('terminal')">⌨️ Terminal educativa</button>
+
+<div class="section-title">HISTORIAL DE CHATS</div>
+<div id="chatList"></div>
+
+<div class="section-title">IAN AI · ASISTENTE EDUCATIVO</div>
+</aside>
+
+<main class="main">
+<header class="topbar">
+<h2 id="pageTitle">IAN AI</h2>
+<span class="status">● ONLINE</span>
+</header>
+
+<!-- CHAT -->
+<section id="chatScreen" class="screen active">
+<div id="messages"></div>
+<div class="input-area">
+<input id="chatInput" placeholder="Preguntale algo a IAN AI..." onkeydown="if(event.key==='Enter')sendMessage()">
+<button class="action" onclick="sendMessage()">Enviar</button>
+</div>
+</section>
+
+<!-- BASE DE DATOS -->
+<section id="databaseScreen" class="screen">
+<h2>🧠 Base de datos</h2>
+<p class="small">Guardá artículos completos de Wikipedia, apuntes y conocimientos propios.</p>
+
+<label>Título del artículo</label>
+<input id="articleTitle" class="field" placeholder="Ejemplo: Inteligencia artificial">
+
+<label>Contenido completo</label>
+<textarea id="articleContent" class="field" placeholder="Pegá aquí el artículo de Wikipedia..."></textarea>
+
+<button class="action" onclick="saveArticle()">Guardar artículo</button>
+<button class="action" onclick="document.getElementById('txtFile').click()">Importar TXT</button>
+<input id="txtFile" class="hidden" type="file" accept=".txt,.md" onchange="importText(event)">
+
+<hr>
+<h2>Mis conocimientos</h2>
+<input id="articleSearch" class="field" placeholder="Buscar artículos..." oninput="renderArticles()">
+<p id="articleCount" class="small"></p>
+<div id="articleList"></div>
+
+<button class="action" onclick="exportDatabase()">Exportar base de datos</button>
+<button class="action" onclick="document.getElementById('jsonFile').click()">Importar JSON</button>
+<input id="jsonFile" class="hidden" type="file" accept=".json" onchange="importDatabase(event)">
+</section>
+
+<!-- BIBLIOTECA -->
+<section id="libraryScreen" class="screen">
+<h2>📚 Biblioteca</h2>
+<p>Todos los artículos guardados en IAN AI.</p>
+<div id="libraryList"></div>
+</section>
+
+<!-- PROYECTOS -->
+<section id="projectsScreen" class="screen">
+<h2>📁 Mis proyectos</h2>
+<input id="projectName" class="field" placeholder="Nombre del proyecto">
+<textarea id="projectDescription" class="field" placeholder="Descripción del proyecto"></textarea>
+<button class="action" onclick="saveProject()">Guardar proyecto</button>
+<div id="projectList"></div>
+</section>
+
+<!-- EDITOR -->
+<section id="editorScreen" class="screen">
+<h2>💻 Editor HTML</h2>
+<textarea id="codeEditor" placeholder="Escribí tu código HTML..."></textarea>
+<button class="action" onclick="runCode()">Ejecutar código</button>
+<iframe id="preview" sandbox="allow-scripts" style="width:100%;height:300px;background:white;border:1px solid #555"></iframe>
+</section>
+
+<!-- TERMINAL -->
+<section id="terminalScreen" class="screen">
+<h2>⌨️ Terminal educativa</h2>
+<p class="small">Terminal simulada para aprender comandos.</p>
+<div id="terminalOutput" class="article">IAN AI Educational Terminal</div>
+<input id="terminalInput" class="field" placeholder="Escribí help..." onkeydown="if(event.key==='Enter')runTerminal()">
+<button class="action" onclick="runTerminal()">Ejecutar</button>
+</section>
+
+</main>
+</div>
+
+<script>
+function loadData(key,fallback){
+try{return JSON.parse(localStorage.getItem(key))??fallback}
+catch{return fallback}
+}
+
+let articles=loadData("ian_articles",[]);
+let projects=loadData("ian_projects",[]);
+let chats=loadData("ian_chats",[]);
+
+if(chats.length===0){
+chats.push({id:Date.now(),title:"Nuevo chat",messages:[]});
+}
+
+let currentChat=chats[0].id;
+
+function showScreen(name){
+document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+document.getElementById(name+"Screen").classList.add("active");
+
+document.querySelectorAll(".sidebtn").forEach(b=>b.classList.remove("selected"));
+const titles={
+chat:"IAN AI",
+database:"BASE DE DATOS",
+library:"BIBLIOTECA",
+projects:"PROYECTOS",
+editor:"EDITOR HTML",
+terminal:"TERMINAL EDUCATIVA"
+};
+document.getElementById("pageTitle").textContent=titles[name];
+
+if(name==="database")renderArticles();
+if(name==="library")renderLibrary();
+if(name==="projects")renderProjects();
+}
+
+function normalize(s){
+return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+}
+
+/* ARTÍCULOS */
+
+function saveArticle(){
+const title=document.getElementById("articleTitle").value.trim();
+const content=document.getElementById("articleContent").value.trim();
+
+if(!title||!content){
+alert("Completá el título y el contenido.");
+return;
+}
+
+articles.push({id:Date.now(),title,content});
+localStorage.setItem("ian_articles",JSON.stringify(articles));
+
+document.getElementById("articleTitle").value="";
+document.getElementById("articleContent").value="";
+
+renderArticles();
+renderLibrary();
+alert("Artículo guardado correctamente.");
+}
+
+function renderArticles(){
+const list=document.getElementById("articleList");
+const search=normalize(document.getElementById("articleSearch").value);
+list.innerHTML="";
+
+const filtered=articles.filter(a=>
+normalize(a.title+" "+a.content).includes(search)
+);
+
+document.getElementById("articleCount").textContent=articles.length+" artículos guardados";
+
+filtered.forEach(a=>{
+const div=document.createElement("div");
+div.className="article";
+
+const title=document.createElement("h3");
+title.textContent=a.title;
+
+const content=document.createElement("p");
+content.textContent=a.content.slice(0,300)+(a.content.length>300?"...":"");
+
+const del=document.createElement("button");
+del.className="action";
+del.textContent="Eliminar";
+del.onclick=()=>deleteArticle(a.id);
+
+div.append(title,content,del);
+list.appendChild(div);
+});
+}
+
+function deleteArticle(id){
+if(!confirm("¿Eliminar este artículo?"))return;
+articles=articles.filter(a=>a.id!==id);
+localStorage.setItem("ian_articles",JSON.stringify(articles));
+renderArticles();
+renderLibrary();
+}
+
+function renderLibrary(){
+const list=document.getElementById("libraryList");
+list.innerHTML="";
+articles.forEach(a=>{
+const div=document.createElement("div");
+div.className="article";
+const title=document.createElement("h3");
+title.textContent=a.title;
+const content=document.createElement("p");
+content.textContent=a.content;
+div.append(title,content);
+list.appendChild(div);
+});
+}
+
+function importText(event){
+const file=event.target.files[0];
+if(!file)return;
+const reader=new FileReader();
+reader.onload=()=>{
+document.getElementById("articleTitle").value=file.name.replace(/\.[^.]+$/,"");
+document.getElementById("articleContent").value=reader.result;
+};
+reader.readAsText(file);
+event.target.value="";
+}
+
+function exportDatabase(){
+const blob=new Blob([JSON.stringify(articles,null,2)],{type:"application/json"});
+const url=URL.createObjectURL(blob);
+const a=document.createElement("a");
+a.href=url;
+a.download="IAN-AI-BASE-DE-DATOS.json";
+a.click();
+URL.revokeObjectURL(url);
+}
+
+function importDatabase(event){
+const file=event.target.files[0];
+if(!file)return;
+const reader=new FileReader();
+reader.onload=()=>{
+try{
+const data=JSON.parse(reader.result);
+if(!Array.isArray(data))throw new Error();
+let count=0;
+data.forEach(a=>{
+if(typeof a.title==="string"&&typeof a.content==="string"&&a.title.trim()&&a.content.trim()){
+articles.push({id:Date.now()+Math.random(),title:a.title,content:a.content});
+count++;
+}
+});
+localStorage.setItem("ian_articles",JSON.stringify(articles));
+renderArticles();
+renderLibrary();
+alert(count+" artículos importados.");
+}catch{
+alert("El archivo JSON no es válido.");
+}
+};
+reader.readAsText(file);
+event.target.value="";
+}
+
+/* CONOCIMIENTOS */
+
+function answer(question){
+const q=normalize(question);
+const words=q.split(/\s+/).filter(w=>w.length>2);
+
+let best=null;
+let bestScore=0;
+
+articles.forEach(a=>{
+const title=normalize(a.title);
+const content=normalize(a.content);
+let score=0;
+
+words.forEach(w=>{
+if(title.includes(w))score+=4;
+else if(content.includes(w))score++;
+});
+
+if(score>bestScore){
+bestScore=score;
+best=a;
+}
+});
+
+if(best&&bestScore>=2){
+return "Información encontrada en mi base de datos:\n\n"+
+best.title+"\n\n"+best.content;
+}
+
+const knowledge=[
+{keys:["hola","buenas"],text:"¡Hola! Soy IAN AI. ¿Qué querés aprender hoy?"},
+{keys:["inteligencia artificial"],text:"La inteligencia artificial permite crear sistemas capaces de realizar tareas que normalmente requieren inteligencia humana."},
+{keys:["python"],text:"Python es un lenguaje de programación utilizado en automatización, ciencia de datos e inteligencia artificial."},
+{keys:["html"],text:"HTML es un lenguaje de marcado utilizado para estructurar páginas web."},
+{keys:["javascript"],text:"JavaScript permite crear páginas web interactivas."},
+{keys:["ciberseguridad","hacking etico"],text:"La ciberseguridad protege sistemas, redes y datos. El hacking ético se realiza con autorización."},
+{keys:["literatura"],text:"La literatura es el arte de utilizar el lenguaje para crear obras escritas u orales."},
+{keys:["wikipedia"],text:"Podés copiar artículos de Wikipedia y guardarlos en mi base de datos."},
+{keys:["programacion"],text:"La programación consiste en crear instrucciones que una computadora puede ejecutar."},
+{keys:["quien sos","quien eres"],text:"Soy IAN AI, tu asistente educativo de tecnología, programación y aprendizaje."}
+];
+
+for(const item of knowledge){
+if(item.keys.some(k=>q.includes(normalize(k))))return item.text;
+}
+
+return "Todavía no tengo información suficiente sobre eso. Podés agregar artículos en mi base de datos.";
+}
+
+/* CHAT */
+
+function saveChats(){
+localStorage.setItem("ian_chats",JSON.stringify(chats));
+}
+
+function getCurrentChat(){
+return chats.find(c=>c.id===currentChat);
+}
+
+function addMessage(role,text){
+const chat=getCurrentChat();
+if(!chat)return;
+
+chat.messages.push({role,text});
+
+if(chat.title==="Nuevo chat"&&role==="user"){
+chat.title=text.slice(0,30);
+}
+
+saveChats();
+renderChats();
+renderMessages();
+}
+
+function sendMessage(){
+const input=document.getElementById("chatInput");
+const text=input.value.trim();
+if(!text)return;
+input.value="";
+addMessage("user",text);
+addMessage("ai",answer(text));
+}
+
+function renderMessages(){
+const box=document.getElementById("messages");
+box.innerHTML="";
+const chat=getCurrentChat();
+if(!chat)return;
+
+if(chat.messages.length===0){
+const welcome=document.createElement("div");
+welcome.className="welcome";
+welcome.innerHTML="<h1>IAN AI</h1><p>¿Qué vamos a aprender hoy?</p>";
+box.appendChild(welcome);
+return;
+}
+
+chat.messages.forEach(m=>{
+const div=document.createElement("div");
+div.className="message "+(m.role==="user"?"user":"ai");
+const label=document.createElement("strong");
+label.textContent=m.role==="user"?"Vos: ":"IAN AI: ";
+div.appendChild(label);
+div.appendChild(document.createTextNode(m.text));
+box.appendChild(div);
+});
+box.scrollTop=box.scrollHeight;
+}
+
+function newChat(){
+const chat={id:Date.now(),title:"Nuevo chat",messages:[]};
+chats.unshift(chat);
+currentChat=chat.id;
+saveChats();
+renderChats();
+renderMessages();
+showScreen("chat");
+}
+
+function openChat(id){
+currentChat=id;
+renderChats();
+renderMessages();
+showScreen("chat");
+}
+
+function renderChats(){
+const list=document.getElementById("chatList");
+list.innerHTML="";
+chats.forEach(chat=>{
+const div=document.createElement("div");
+div.className="chat-item";
+div.textContent=chat.title;
+div.onclick=()=>openChat(chat.id);
+if(chat.id===currentChat)div.style.borderColor="white";
+list.appendChild(div);
+});
+}
+
+/* PROYECTOS */
+
+function saveProject(){
+const name=document.getElementById("projectName").value.trim();
+const description=document.getElementById("projectDescription").value.trim();
+if(!name)return alert("Escribí un nombre.");
+
+projects.push({name,description});
+localStorage.setItem("ian_projects",JSON.stringify(projects));
+
+document.getElementById("projectName").value="";
+document.getElementById("projectDescription").value="";
+renderProjects();
+}
+
+function renderProjects(){
+const list=document.getElementById("projectList");
+list.innerHTML="";
+projects.forEach((p,i)=>{
+const div=document.createElement("div");
+div.className="article";
+const title=document.createElement("h3");
+title.textContent=p.name;
+const desc=document.createElement("p");
+desc.textContent=p.description;
+const del=document.createElement("button");
+del.className="action";
+del.textContent="Eliminar";
+del.onclick=()=>{
+projects.splice(i,1);
+localStorage.setItem("ian_projects",JSON.stringify(projects));
+renderProjects();
+};
+div.append(title,desc,del);
+list.appendChild(div);
+});
+}
+
+/* EDITOR */
+
+function runCode(){
+document.getElementById("preview").srcdoc=document.getElementById("codeEditor").value;
+}
+
+/* TERMINAL SIMULADA */
+
+function runTerminal(){
+const input=document.getElementById("terminalInput");
+const output=document.getElementById("terminalOutput");
+const command=input.value.trim().toLowerCase();
+let result="Comando no reconocido. Escribí help.";
+
+if(command==="help")result="Comandos: help, info, clear";
+if(command==="info")result="IAN AI Educational Terminal. Terminal simulada.";
+if(command==="clear")result="";
+
+output.textContent=result;
+input.value="";
+}
+
+/* INICIAR */
+
+renderChats();
+renderMessages();
+renderArticles();
+renderLibrary();
+renderProjects();
+</script>
+</body>
+</html>
